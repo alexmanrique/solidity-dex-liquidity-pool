@@ -14,6 +14,7 @@ contract SwapApp {
     address public DAI;
     event SwapTokens(address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOut);
     event AddLiquidity(address tokenA, address tokenB, uint256 liquidity);
+    event RemoveLiquidity(address tokenA, address tokenB, uint256 liquidity);
 
     constructor(address V2Router02_, address USDT_, address DAI_, address UniswapV2Factory_) {
         V2Router02Address = V2Router02_;
@@ -71,5 +72,7 @@ contract SwapApp {
         // Finally, call removeLiquidity which will transfer tokens back to msg.sender
         IV2Router02(V2Router02Address)
             .removeLiquidity(USDT, DAI, liquidityAmount_, amountAMin_, amountBMin_, msg.sender, deadline_);
+
+            emit RemoveLiquidity(USDT, DAI, liquidityAmount_);
     }
 }

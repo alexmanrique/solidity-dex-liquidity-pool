@@ -6,6 +6,7 @@ SwapApp is a smart contract that facilitates token swapping and liquidity provis
 
 - **Token Swapping**: Swap tokens using Uniswap V2 Router with slippage protection
 - **Add Liquidity**: Automatically adds liquidity to a USDT/DAI pool, performing a swap of half the tokens before adding liquidity
+- **Remove Liquidity**: Remove liquidity from a USDT/DAI pool, returning both tokens to the user
 - **Security**: Uses OpenZeppelin's SafeERC20 for secure token transfers
 - **Events**: Emits events to track swaps and liquidity additions
 
@@ -17,12 +18,14 @@ The main contract that implements the following functions:
 
 - `swapTokens()`: Swaps exact tokens for other tokens using Uniswap V2 Router
 - `addLiquidity()`: Adds liquidity to a USDT/DAI pool, automatically swapping half of the tokens
+- `removeLiquidity()`: Removes liquidity from a USDT/DAI pool, returning both USDT and DAI tokens to the user
 
 ### Constructor Parameters
 
 - `V2Router02_`: Address of the Uniswap V2 Router02 contract
 - `USDT_`: Address of the USDT token
 - `DAI_`: Address of the DAI token
+- `UniswapV2Factory_`: Address of the Uniswap V2 Factory contract
 
 ## Testing
 
@@ -37,6 +40,7 @@ $ forge test -vvvv --fork-url https://arb1.arbitrum.io/rpc
 - `testHasBeenDeployedCorrectly()`: Verifies that the contract has been deployed correctly
 - `testSwapTokensCorrectly()`: Verifies that token swapping works correctly
 - `testAddLiquidityCorrectly()`: Verifies that liquidity addition works correctly
+- `testRemoveLiquidityCorrectly()`: Verifies that liquidity removal works correctly
 
 ## Foundry
 
