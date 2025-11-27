@@ -13,7 +13,7 @@ contract SwapApp is Ownable {
     address public UniswapV2FactoryAddress;
     uint256 public feeBasisPoints;
     mapping(address => bool) public blacklist;
-    
+
     event SwapTokens(address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOut);
     event AddLiquidity(address tokenA, address tokenB, uint256 liquidity);
     event RemoveLiquidity(address tokenA, address tokenB, uint256 liquidity);
@@ -21,9 +21,7 @@ contract SwapApp is Ownable {
     event AddressBlacklisted(address indexed account);
     event AddressRemovedFromBlacklist(address indexed account);
 
-    constructor(address V2Router02_, address UniswapV2Factory_, address owner_)
-        Ownable(owner_)
-    {
+    constructor(address V2Router02_, address UniswapV2Factory_, address owner_) Ownable(owner_) {
         V2Router02Address = V2Router02_;
         UniswapV2FactoryAddress = UniswapV2Factory_;
         feeBasisPoints = 100;
@@ -35,26 +33,26 @@ contract SwapApp is Ownable {
     {
         require(!blacklist[msg.sender], "Address is blacklisted");
         require(!blacklist[to], "Recipient address is blacklisted");
-        
+
         IERC20(path[0]).safeTransferFrom(msg.sender, address(this), amountIn);
         IERC20(path[0]).approve(V2Router02Address, amountIn);
-        
-        uint256[] memory amountOuts =
-            IV2Router02(V2Router02Address).swapExactTokensForTokens(amountIn, amountOutMin, path, address(this), deadline);
-        
+
+        uint256[] memory amountOuts = IV2Router02(V2Router02Address)
+            .swapExactTokensForTokens(amountIn, amountOutMin, path, address(this), deadline);
+
         uint256 totalAmountOut = amountOuts[amountOuts.length - 1];
         address tokenOut = path[path.length - 1];
-        
+
         uint256 feeAmount = (totalAmountOut * feeBasisPoints) / 10000;
         uint256 amountToUser = totalAmountOut - feeAmount;
-        
+
         if (feeAmount > 0) {
             IERC20(tokenOut).safeTransfer(owner(), feeAmount);
             emit FeeCollected(tokenOut, owner(), feeAmount);
         }
-        
+
         IERC20(tokenOut).safeTransfer(to, amountToUser);
-        
+
         emit SwapTokens(path[0], tokenOut, amountIn, amountToUser);
 
         return amountToUser;
@@ -71,7 +69,7 @@ contract SwapApp is Ownable {
         uint256 deadline_
     ) external returns (uint256 liquidity) {
         require(!blacklist[msg.sender], "Address is blacklisted");
-        
+
         IERC20(tokenA).safeTransferFrom(msg.sender, address(this), amountIn_ / 2);
         uint256 swapedAmount = swapTokens(amountIn_ / 2, amountOutMin_, path_, address(this), deadline_);
 
@@ -95,7 +93,7 @@ contract SwapApp is Ownable {
         uint256 deadline_
     ) external {
         require(!blacklist[msg.sender], "Address is blacklisted");
-        
+
         address lpTokenAddress = IFactory(UniswapV2FactoryAddress).getPair(tokenA, tokenB);
 
         // First, transfer LP tokens from the user to this contract

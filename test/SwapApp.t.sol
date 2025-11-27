@@ -43,23 +43,23 @@ contract SwapAppTest is Test {
         uint256 usdtBalanceBefore = IERC20(USDT).balanceOf(user);
         uint256 daiBalanceBefore = IERC20(DAI).balanceOf(user);
         uint256 ownerDaiBalanceBefore = IERC20(DAI).balanceOf(owner);
-        
+
         uint256 amountOut = app.swapTokens(AMOUNT_IN, amountOutMin, path, user, deadline);
-        
+
         uint256 usdtBalanceAfter = IERC20(USDT).balanceOf(user);
         uint256 daiBalanceAfter = IERC20(DAI).balanceOf(user);
         uint256 ownerDaiBalanceAfter = IERC20(DAI).balanceOf(owner);
 
         assert(usdtBalanceAfter == usdtBalanceBefore - AMOUNT_IN);
         assert(daiBalanceAfter > daiBalanceBefore);
-        
+
         uint256 feeReceived = ownerDaiBalanceAfter - ownerDaiBalanceBefore;
         assert(feeReceived > 0);
-        
+
         uint256 totalAmountOut = amountOut + feeReceived;
         uint256 expectedFee = (totalAmountOut * FEE_BASIS_POINTS) / 10000;
         assert(feeReceived >= expectedFee - 1 && feeReceived <= expectedFee + 1);
-        
+
         assert(daiBalanceAfter - daiBalanceBefore == amountOut);
 
         vm.stopPrank();
@@ -87,7 +87,7 @@ contract SwapAppTest is Test {
 
         assert(lpBalance > 0);
         assert(usdtBalanceAfter < usdtBalanceBefore);
-        
+
         uint256 feeReceived = ownerDaiBalanceAfter - ownerDaiBalanceBefore;
         assert(feeReceived > 0);
 
@@ -103,7 +103,8 @@ contract SwapAppTest is Test {
 
         address[] memory path = _getUSDTToDAIPath();
 
-        uint256 liquidity = app.addLiquidity(USDT, DAI, AMOUNT_IN, AMOUNT_OUT_MIN, path, AMOUNT_A_MIN, AMOUNT_B_MIN, deadline);
+        uint256 liquidity =
+            app.addLiquidity(USDT, DAI, AMOUNT_IN, AMOUNT_OUT_MIN, path, AMOUNT_A_MIN, AMOUNT_B_MIN, deadline);
 
         address lpTokenAddress = IFactory(UniswapV2FactoryAddress).getPair(USDT, DAI);
 
@@ -140,78 +141,78 @@ contract SwapAppTest is Test {
 
     function testSetFeeBasisPoints() public {
         vm.startPrank(owner);
-        
+
         assert(app.feeBasisPoints() == FEE_BASIS_POINTS);
-        
+
         app.setFeeBasisPoints(200);
         assert(app.feeBasisPoints() == 200);
-        
+
         vm.expectRevert("Fee cannot exceed 10%");
         app.setFeeBasisPoints(1001);
-        
+
         vm.stopPrank();
     }
 
     function testSetFeeBasisPointsOnlyOwner() public {
         vm.startPrank(user);
-        
+
         vm.expectRevert();
         app.setFeeBasisPoints(200);
-        
+
         vm.stopPrank();
     }
 
     function testAddToBlacklist() public {
         vm.startPrank(owner);
-        
+
         assert(!app.blacklist(blacklistedUser));
-        
+
         app.addToBlacklist(blacklistedUser);
-        
+
         assert(app.blacklist(blacklistedUser));
-        
+
         vm.stopPrank();
     }
 
     function testAddToBlacklistOnlyOwner() public {
         vm.startPrank(user);
-        
+
         vm.expectRevert();
         app.addToBlacklist(blacklistedUser);
-        
+
         vm.stopPrank();
     }
 
     function testAddToBlacklistZeroAddress() public {
         vm.startPrank(owner);
-        
+
         vm.expectRevert("Cannot blacklist zero address");
         app.addToBlacklist(address(0));
-        
+
         vm.stopPrank();
     }
 
     function testAddToBlacklistAlreadyBlacklisted() public {
         vm.startPrank(owner);
-        
+
         app.addToBlacklist(blacklistedUser);
-        
+
         vm.expectRevert("Address already blacklisted");
         app.addToBlacklist(blacklistedUser);
-        
+
         vm.stopPrank();
     }
 
     function testRemoveFromBlacklist() public {
         vm.startPrank(owner);
-        
+
         app.addToBlacklist(blacklistedUser);
         assert(app.blacklist(blacklistedUser));
-        
+
         app.removeFromBlacklist(blacklistedUser);
-        
+
         assert(!app.blacklist(blacklistedUser));
-        
+
         vm.stopPrank();
     }
 
@@ -219,21 +220,21 @@ contract SwapAppTest is Test {
         vm.startPrank(owner);
         app.addToBlacklist(blacklistedUser);
         vm.stopPrank();
-        
+
         vm.startPrank(user);
-        
+
         vm.expectRevert();
         app.removeFromBlacklist(blacklistedUser);
-        
+
         vm.stopPrank();
     }
 
     function testRemoveFromBlacklistNotBlacklisted() public {
         vm.startPrank(owner);
-        
+
         vm.expectRevert("Address not blacklisted");
         app.removeFromBlacklist(blacklistedUser);
-        
+
         vm.stopPrank();
     }
 
@@ -241,15 +242,15 @@ contract SwapAppTest is Test {
         vm.startPrank(owner);
         app.addToBlacklist(blacklistedUser);
         vm.stopPrank();
-        
+
         vm.startPrank(blacklistedUser);
-        
+
         uint256 deadline = block.timestamp + DEADLINE_DURATION;
         address[] memory path = _getUSDTToDAIPath();
-        
+
         vm.expectRevert("Address is blacklisted");
         app.swapTokens(AMOUNT_IN, AMOUNT_OUT_MIN, path, blacklistedUser, deadline);
-        
+
         vm.stopPrank();
     }
 
@@ -257,16 +258,16 @@ contract SwapAppTest is Test {
         vm.startPrank(owner);
         app.addToBlacklist(blacklistedUser);
         vm.stopPrank();
-        
+
         vm.startPrank(user);
-        
+
         uint256 deadline = block.timestamp + DEADLINE_DURATION;
         address[] memory path = _getUSDTToDAIPath();
         IERC20(USDT).approve(address(app), AMOUNT_IN);
-        
+
         vm.expectRevert("Recipient address is blacklisted");
         app.swapTokens(AMOUNT_IN, AMOUNT_OUT_MIN, path, blacklistedUser, deadline);
-        
+
         vm.stopPrank();
     }
 
@@ -274,15 +275,15 @@ contract SwapAppTest is Test {
         vm.startPrank(owner);
         app.addToBlacklist(blacklistedUser);
         vm.stopPrank();
-        
+
         vm.startPrank(blacklistedUser);
-        
+
         uint256 deadline = block.timestamp + DEADLINE_DURATION;
         address[] memory path = _getUSDTToDAIPath();
-        
+
         vm.expectRevert("Address is blacklisted");
         app.addLiquidity(USDT, DAI, AMOUNT_IN, AMOUNT_OUT_MIN, path, AMOUNT_A_MIN, AMOUNT_B_MIN, deadline);
-        
+
         vm.stopPrank();
     }
 
@@ -290,14 +291,14 @@ contract SwapAppTest is Test {
         vm.startPrank(owner);
         app.addToBlacklist(blacklistedUser);
         vm.stopPrank();
-        
+
         vm.startPrank(blacklistedUser);
-        
+
         uint256 deadline = block.timestamp + DEADLINE_DURATION;
-        
+
         vm.expectRevert("Address is blacklisted");
         app.removeLiquidity(USDT, DAI, 1000, AMOUNT_A_MIN, AMOUNT_B_MIN, deadline);
-        
+
         vm.stopPrank();
     }
 
@@ -308,7 +309,7 @@ contract SwapAppTest is Test {
         app.removeFromBlacklist(blacklistedUser);
         assert(!app.blacklist(blacklistedUser));
         vm.stopPrank();
-        
+
         // Verify that after removal, the user is no longer blacklisted
         // The actual swap operation would require funds, but we verify the blacklist check passes
         assert(!app.blacklist(blacklistedUser));
