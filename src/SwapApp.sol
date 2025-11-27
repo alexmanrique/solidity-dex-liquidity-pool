@@ -3,24 +3,31 @@ pragma solidity ^0.8.30;
 
 import {IERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Ownable} from "../lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 import {IV2Router02} from "./interfaces/IV2Router02.sol";
 import {IFactory} from "./interfaces/IFactory.sol";
 
-contract SwapApp {
+contract SwapApp is Ownable {
     using SafeERC20 for IERC20;
     address public V2Router02Address;
     address public UniswapV2FactoryAddress;
     address public USDT;
     address public DAI;
+    uint256 public feeBasisPoints;
+    
     event SwapTokens(address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOut);
     event AddLiquidity(address tokenA, address tokenB, uint256 liquidity);
     event RemoveLiquidity(address tokenA, address tokenB, uint256 liquidity);
+    event FeeCollected(address token, address owner, uint256 feeAmount);
 
-    constructor(address V2Router02_, address USDT_, address DAI_, address UniswapV2Factory_) {
+    constructor(address V2Router02_, address USDT_, address DAI_, address UniswapV2Factory_, address owner_)
+        Ownable(owner_)
+    {
         V2Router02Address = V2Router02_;
         UniswapV2FactoryAddress = UniswapV2Factory_;
         USDT = USDT_;
         DAI = DAI_;
+        feeBasisPoints = 100;
     }
 
     function swapTokens(uint256 amountIn, uint256 amountOutMin, address[] calldata path, address to, uint256 deadline)
@@ -29,11 +36,26 @@ contract SwapApp {
     {
         IERC20(path[0]).safeTransferFrom(msg.sender, address(this), amountIn);
         IERC20(path[0]).approve(V2Router02Address, amountIn);
+        
         uint256[] memory amountOuts =
-            IV2Router02(V2Router02Address).swapExactTokensForTokens(amountIn, amountOutMin, path, to, deadline);
-        emit SwapTokens(path[0], path[path.length - 1], amountIn, amountOuts[amountOuts.length - 1]);
+            IV2Router02(V2Router02Address).swapExactTokensForTokens(amountIn, amountOutMin, path, address(this), deadline);
+        
+        uint256 totalAmountOut = amountOuts[amountOuts.length - 1];
+        address tokenOut = path[path.length - 1];
+        
+        uint256 feeAmount = (totalAmountOut * feeBasisPoints) / 10000;
+        uint256 amountToUser = totalAmountOut - feeAmount;
+        
+        if (feeAmount > 0) {
+            IERC20(tokenOut).safeTransfer(owner(), feeAmount);
+            emit FeeCollected(tokenOut, owner(), feeAmount);
+        }
+        
+        IERC20(tokenOut).safeTransfer(to, amountToUser);
+        
+        emit SwapTokens(path[0], tokenOut, amountIn, amountToUser);
 
-        return amountOuts[amountOuts.length - 1];
+        return amountToUser;
     }
 
     function addLiquidity(
@@ -74,5 +96,14 @@ contract SwapApp {
             .removeLiquidity(USDT, DAI, liquidityAmount_, amountAMin_, amountBMin_, msg.sender, deadline_);
 
             emit RemoveLiquidity(USDT, DAI, liquidityAmount_);
+    }
+
+    /**
+     * @notice Allows the owner to change the fee
+     * @param newFeeBasisPoints New fee in basis points (100 = 1%)
+     */
+    function setFeeBasisPoints(uint256 newFeeBasisPoints) external onlyOwner {
+        require(newFeeBasisPoints <= 1000, "Fee cannot exceed 10%");
+        feeBasisPoints = newFeeBasisPoints;
     }
 }
