@@ -15,6 +15,13 @@ contract SwapAppTest is Test {
     address DAI = 0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1; // DAI address in Arbitrum Mainnet
     address UniswapV2FactoryAddress = 0xf1D7CC64Fb4452F05c498126312eBE29f30Fbcf9; // UniswapV2Factory address in Arbitrum Mainnet
 
+    // Common test variables
+    uint256 constant AMOUNT_IN = 5 * 1e6;
+    uint256 constant AMOUNT_OUT_MIN = 2 * 1e18;
+    uint256 constant AMOUNT_A_MIN = AMOUNT_IN / 2 * 99 / 100;
+    uint256 constant AMOUNT_B_MIN = AMOUNT_OUT_MIN * 99 / 100;
+    uint256 constant DEADLINE_DURATION = 3600; // 1 hour in seconds
+
     function setUp() public {
         app = new SwapApp(uniswapV2SwappRouterAddress, USDT, DAI, UniswapV2FactoryAddress);
     }
@@ -25,19 +32,18 @@ contract SwapAppTest is Test {
 
     function testSwapTokensCorrectly() public {
         vm.startPrank(user);
-        uint256 amountIn = 5 * 1e6;
-        uint256 amountOutMin = 4 * 1e18;
-        IERC20(USDT).approve(address(app), amountIn);
-        uint256 deadline = block.timestamp + 3600;
+        uint256 amountOutMin = 4 * 1e18; // Different value for this test
+        IERC20(USDT).approve(address(app), AMOUNT_IN);
+        uint256 deadline = block.timestamp + DEADLINE_DURATION;
         address[] memory path = _getUSDTToDAIPath();
 
         uint256 usdtBalanceBefore = IERC20(USDT).balanceOf(user);
         uint256 daiBalanceBefore = IERC20(DAI).balanceOf(user);
-        app.swapTokens(amountIn, amountOutMin, path, user, deadline);
+        app.swapTokens(AMOUNT_IN, amountOutMin, path, user, deadline);
         uint256 usdtBalanceAfter = IERC20(USDT).balanceOf(user);
         uint256 daiBalanceAfter = IERC20(DAI).balanceOf(user);
 
-        assert(usdtBalanceAfter == usdtBalanceBefore - amountIn);
+        assert(usdtBalanceAfter == usdtBalanceBefore - AMOUNT_IN);
         assert(daiBalanceAfter > daiBalanceBefore);
 
         vm.stopPrank();
@@ -46,19 +52,15 @@ contract SwapAppTest is Test {
     function testAddLiquidityCorrectly() public {
         vm.startPrank(user);
 
-        uint256 amountIn = 5 * 1e6;
-        uint256 amountOutMin = 2 * 1e18;
-        uint256 amountAMin = amountIn / 2 * 99 / 100;
-        uint256 amountBMin = amountOutMin * 99 / 100;
-        uint256 deadline = block.timestamp + 3600;
+        uint256 deadline = block.timestamp + DEADLINE_DURATION;
 
-        IERC20(USDT).approve(address(app), amountIn);
+        IERC20(USDT).approve(address(app), AMOUNT_IN);
 
         address[] memory path = _getUSDTToDAIPath();
 
         uint256 usdtBalanceBefore = IERC20(USDT).balanceOf(user);
 
-        app.addLiquidity(amountIn, amountOutMin, path, amountAMin, amountBMin, deadline);
+        app.addLiquidity(AMOUNT_IN, AMOUNT_OUT_MIN, path, AMOUNT_A_MIN, AMOUNT_B_MIN, deadline);
 
         uint256 usdtBalanceAfter = IERC20(USDT).balanceOf(user);
 
@@ -74,18 +76,14 @@ contract SwapAppTest is Test {
 
     function testRemoveLiquidityCorrectly() public {
         vm.startPrank(user);
-        uint256 amountIn = 5 * 1e6;
 
-        uint256 amountOutMin = 2 * 1e18;
-        uint256 deadline = block.timestamp + 3600;
-        uint256 amountAMin = amountIn / 2 * 99 / 100;
-        uint256 amountBMin = amountOutMin * 99 / 100;
+        uint256 deadline = block.timestamp + DEADLINE_DURATION;
 
-        IERC20(USDT).approve(address(app), amountIn);
+        IERC20(USDT).approve(address(app), AMOUNT_IN);
 
         address[] memory path = _getUSDTToDAIPath();
 
-        uint256 liquidity = app.addLiquidity(amountIn, amountOutMin, path, amountAMin, amountBMin, deadline);
+        uint256 liquidity = app.addLiquidity(AMOUNT_IN, AMOUNT_OUT_MIN, path, AMOUNT_A_MIN, AMOUNT_B_MIN, deadline);
 
         address lpTokenAddress = IFactory(UniswapV2FactoryAddress).getPair(USDT, DAI);
 
@@ -100,7 +98,7 @@ contract SwapAppTest is Test {
         // Approve SwapApp to transfer LP tokens from user
         IERC20(lpTokenAddress).approve(address(app), liquidity);
 
-        app.removeLiquidity(liquidity, amountAMin, amountBMin, deadline);
+        app.removeLiquidity(liquidity, AMOUNT_A_MIN, AMOUNT_B_MIN, deadline);
 
         uint256 usdtBalanceAfter = IERC20(USDT).balanceOf(user);
         uint256 daiBalanceAfter = IERC20(DAI).balanceOf(user);
@@ -112,8 +110,8 @@ contract SwapAppTest is Test {
         assert(usdtBalanceAfter > usdtBalanceBefore);
         assert(daiBalanceAfter > daiBalanceBefore);
 
-        assert(usdtBalanceAfter - usdtBalanceBefore >= amountAMin);
-        assert(daiBalanceAfter - daiBalanceBefore >= amountBMin);
+        assert(usdtBalanceAfter - usdtBalanceBefore >= AMOUNT_A_MIN);
+        assert(daiBalanceAfter - daiBalanceBefore >= AMOUNT_B_MIN);
 
         assert(IERC20(lpTokenAddress).balanceOf(address(app)) == 0);
 
